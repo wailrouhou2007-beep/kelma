@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>كلمة — لعبة الدارجة</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+:root {
+  --bg:#0d0d0d; --surface:#1a1a1a; --surface2:#2a2a2a;
+  --border:#383838; --gold:#c9a84c; --gold2:#f0c96a;
+  --green:#4caf72; --yellow:#c9a84c; --gray:#3a3a3a;
+  --text:#f0ede6; --dim:#777;
+}
+
+html { height:100%; overflow:hidden; }
+
+body {
+  height:100%; overflow:hidden;
+  background:var(--bg); color:var(--text);
+  font-family:'Tajawal',sans-serif;
+  display:flex; flex-direction:column;
+  align-items:center; width:100%;
+}
+
+/* prevent ANY input focus / system keyboard */
+* { -webkit-user-select:none; user-select:none; }
+
+header {
+  width:100%; max-width:480px;
+  padding:12px 16px;
+  display:flex; align-items:center; justify-content:space-between;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.logo { font-size:26px; font-weight:900; color:var(--gold); }
+.logo span { color:var(--text); }
+.streak {
+  display:flex; align-items:center; gap:5px;
+  background:var(--surface); border:1px solid var(--border);
+  padding:5px 13px; border-radius:20px;
+  font-size:13px; font-weight:700;
+}
+
+.ad {
+  width:100%; max-width:480px; height:50px; flex-shrink:0;
+  background:var(--surface); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  color:var(--dim); font-size:10px; letter-spacing:2px;
+}
+
+main {
+  flex:1; width:100%; max-width:480px;
+  display:flex; align-items:center; justify-content:center;
+  overflow:hidden; padding:8px 0;
+}
+
+.grid { display:flex; flex-direction:column; gap:5px; }
+.row  { display:flex; gap:5px; }
+
+.tile {
+  width:54px; height:54px;
+  border:2px solid var(--border); border-radius:9px;
+  background:var(--surface);
+  display:flex; align-items:center; justify-content:center;
+  font-size:24px; font-weight:900; color:var(--text);
+}
+.tile.filled  { border-color:#666; }
+.tile.correct { background:var(--green);  border-color:var(--green);  color:#fff; }
+.tile.present { background:var(--yellow); border-color:var(--yellow); color:#111; }
+.tile.absent  { background:var(--gray);   border-color:var(--gray);   color:#555; }
+
+.tile.pop   { animation:pop   .15s ease; }
+.tile.flip  { animation:flip  .45s ease; }
+
+@keyframes pop  { 0%{transform:scale(1)} 50%{transform:scale(1.13)} 100%{transform:scale(1)} }
+@keyframes flip { 0%{transform:scaleY(1)} 50%{transform:scaleY(0)} 100%{transform:scaleY(1)} }
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-6px)} 40%{transform:translateX(6px)}
+  60%{transform:translateX(-4px)} 80%{transform:translateX(4px)}
+}
+.shake { animation:shake .35s ease; }
+
+/* ── KEYBOARD ── */
+.keyboard {
+  width:100%; max-width:480px;
+  padding:5px 6px 12px; flex-shrink:0;
+  display:flex; flex-direction:column; gap:5px;
+}
+.kb-row { display:flex; justify-content:center; gap:4px; }
+
+.key {
+  height:44px; flex:1; max-width:36px;
+  border-radius:7px; border:none;
+  background:var(--surface2); color:var(--text);
+  font-family:'Tajawal',sans-serif;
+  font-size:18px; font-weight:700;
+  cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  touch-action:manipulation;
+  transition:background .1s, transform .08s;
+}
+.key:active { transform:scale(.9); }
+.key.wide   { max-width:56px; flex:1.5; font-size:13px; font-weight:900; }
+.key.correct { background:var(--green);  color:#fff; }
+.key.present { background:var(--yellow); color:#111; }
+.key.absent  { background:#222; color:#444; }
+
+/* ── TOAST ── */
+.toast {
+  position:fixed; top:68px; left:50%;
+  transform:translateX(-50%) translateY(-8px);
+  background:var(--text); color:var(--bg);
+  padding:9px 22px; border-radius:30px;
+  font-weight:700; font-size:14px;
+  opacity:0; pointer-events:none;
+  transition:all .25s; z-index:500;
+  white-space:nowrap;
+}
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* ── MODAL ── */
+.overlay {
+  position:fixed; inset:0;
+  background:rgba(0,0,0,.88);
+  backdrop-filter:blur(6px);
+  display:flex; align-items:center; justify-content:center;
+  z-index:300; padding:16px;
+  opacity:0; pointer-events:none;
+  transition:opacity .3s;
+}
+.overlay.open { opacity:1; pointer-events:all; }
+
+.modal {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:20px; padding:26px 20px;
+  width:100%; max-width:330px; text-align:center;
+  transform:translateY(16px); transition:transform .3s;
+}
+.overlay.open .modal { transform:translateY(0); }
+
+.m-emoji { font-size:46px; margin-bottom:8px; }
+.m-title { font-size:22px; font-weight:900; margin-bottom:5px; }
+.m-sub   { color:var(--dim); font-size:13px; margin-bottom:14px; }
+
+.m-word {
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:11px; padding:11px; margin-bottom:14px;
+}
+.m-word-lbl  { font-size:10px; color:var(--dim); letter-spacing:2px; margin-bottom:3px; }
+.m-word-text { font-size:26px; font-weight:900; color:var(--gold); }
+
+.m-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-bottom:18px; }
+.stat    { background:var(--surface2); border-radius:9px; padding:9px 5px; }
+.stat-n  { font-size:24px; font-weight:900; color:var(--gold); }
+.stat-l  { font-size:10px; color:var(--dim); margin-top:1px; }
+
+.btn-share {
+  width:100%; padding:13px;
+  background:var(--gold); color:#111; border:none;
+  border-radius:11px; font-family:'Tajawal',sans-serif;
+  font-size:16px; font-weight:900; cursor:pointer;
+  margin-bottom:7px;
+}
+.btn-share:active { background:var(--gold2); }
+
+.btn-next {
+  width:100%; padding:11px; background:transparent;
+  color:var(--dim); border:1px solid var(--border);
+  border-radius:11px; font-family:'Tajawal',sans-serif;
+  font-size:13px; font-weight:700; cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<header>
+  <div class="logo">كلمة<span>.</span></div>
+  <div class="streak">🔥 <span id="sc">0</span> يوم</div>
+</header>
+
+<div class="ad">[ إعلان — Google AdSense ]</div>
+
+<main><div class="grid" id="grid"></div></main>
+
+<div class="keyboard" id="kb"></div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="m-emoji" id="m-emoji">🎉</div>
+    <div class="m-title" id="m-title">برافو!</div>
+    <div class="m-sub"   id="m-sub"></div>
+    <div class="m-word">
+      <div class="m-word-lbl">الكلمة كانت</div>
+      <div class="m-word-text" id="m-word"></div>
+    </div>
+    <div class="m-stats">
+      <div class="stat"><div class="stat-n" id="s-p">0</div><div class="stat-l">لعبت</div></div>
+      <div class="stat"><div class="stat-n" id="s-w">0</div><div class="stat-l">ربحت</div></div>
+      <div class="stat"><div class="stat-n" id="s-s">0</div><div class="stat-l">سلسلة</div></div>
+    </div>
+    <button class="btn-share" id="btn-share">📤 شارك النتيجة</button>
+    <button class="btn-next"  id="btn-next">🔄 كلمة جديدة</button>
+  </div>
+</div>
+
+<script>
+const WORDS = [
+  'كتاب','خبزة','شمعة','قهوة','حليب','سمكة','تفاح','خضرة','حريرة','شربة',
+  'حلوة','مزيان','بزاف','شويا','بلاصة','بلادي','مدينة','دارنا','طريقة','مشكلة',
+  'فرحة','شجرة','وردة','زهرة','جزيرة','صحراء','بحيرة','جبالة','كرسية','طبلة',
+  'خزانة','فراشة','سريرة','مطبخة','حمامة','جلسة','لقطة','حالة','صبرية','وقفة'
+];
+
+const ROWS = [
+  ['ض','ص','ث','ق','ف','غ','ع','ه','خ','ح','ج','د'],
+  ['ش','س','ي','ب','ل','ا','ت','ن','م','ك','ط'],
+  ['أدخل','ئ','ء','ؤ','ر','ى','ة','و','ز','ظ','⌫']
+];
+
+const W = 5, MAX = 6;
+let target='', guesses=[], cur='', over=false;
+let stats = {p:0, w:0, s:0};
+const ks = {};
+
+// load stats
+try { const x=localStorage.getItem('ks'); if(x) stats=JSON.parse(x); } catch(e){}
+
+function saveStats(){ try{localStorage.setItem('ks',JSON.stringify(stats));}catch(e){} }
+
+// BUILD GRID
+function buildGrid(){
+  const g=document.getElementById('grid'); g.innerHTML='';
+  for(let r=0;r<MAX;r++){
+    const row=document.createElement('div'); row.className='row'; row.id='r'+r;
+    for(let c=0;c<W;c++){
+      const t=document.createElement('div'); t.className='tile'; t.id='t'+r+'_'+c;
+      row.appendChild(t);
+    }
+    g.appendChild(row);
+  }
+}
+
+// BUILD KEYBOARD
+function buildKB(){
+  const kb=document.getElementById('kb'); kb.innerHTML='';
+  ROWS.forEach(row=>{
+    const d=document.createElement('div'); d.className='kb-row';
+    row.forEach(k=>{
+      const b=document.createElement('button');
+      b.className='key'+(k==='أدخل'||k==='⌫'?' wide':'');
+      b.textContent=k; b.dataset.k=k;
+      // use touchstart to avoid system keyboard
+      b.addEventListener('touchstart',e=>{ e.preventDefault(); e.stopPropagation(); press(k); },{passive:false});
+      b.addEventListener('mousedown', e=>{ e.preventDefault(); press(k); });
+      d.appendChild(b);
+    });
+    kb.appendChild(d);
+  });
+}
+
+function renderCur(){
+  const r=guesses.length;
+  for(let c=0;c<W;c++){
+    const t=document.getElementById('t'+r+'_'+c);
+    t.textContent=cur[c]||'';
+    t.className='tile'+(cur[c]?' filled':'');
+  }
+}
+
+function eval_(guess){
+  const res=Array(W).fill('absent');
+  const ta=target.split(''); const used=Array(W).fill(false);
+  guess.split('').forEach((ch,i)=>{ if(ch===ta[i]){res[i]='correct';used[i]=true;} });
+  guess.split('').forEach((ch,i)=>{
+    if(res[i]==='correct') return;
+    const j=ta.findIndex((t,idx)=>t===ch&&!used[idx]);
+    if(j!==-1){res[i]='present';used[j]=true;}
+  });
+  return res;
+}
+
+function reveal(ri,guess,res,cb){
+  res.forEach((s,c)=>{
+    setTimeout(()=>{
+      const t=document.getElementById('t'+ri+'_'+c);
+      t.className='tile flip';
+      setTimeout(()=>{ t.className='tile '+s; },225);
+      if(c===W-1) setTimeout(cb,500);
+    },c*160);
+  });
+}
+
+function updateKB(guess,res){
+  guess.split('').forEach((ch,i)=>{
+    const s=res[i], p=ks[ch];
+    if(p==='correct') return;
+    if(p==='present'&&s!=='correct') return;
+    ks[ch]=s;
+    document.querySelectorAll('.key').forEach(b=>{
+      if(b.dataset.k===ch){ b.className='key '+s; }
+    });
+  });
+}
+
+function press(k){
+  if(over) return;
+  const r=guesses.length; if(r>=MAX) return;
+  if(k==='⌫'){
+    if(cur.length>0){ cur=cur.slice(0,-1); renderCur(); }
+    return;
+  }
+  if(k==='أدخل'){ submit(); return; }
+  if(cur.length<W){
+    cur+=k;
+    const c=cur.length-1;
+    const t=document.getElementById('t'+r+'_'+c);
+    t.textContent=k; t.className='tile filled pop';
+    setTimeout(()=>t.classList.remove('pop'),150);
+  }
+}
+
+function submit(){
+  const r=guesses.length;
+  if(cur.length<W){ toast('أكمل الكلمة!'); shake(r); return; }
+  const g=cur, res=eval_(g);
+  guesses.push(g); cur=''; renderCur();
+  reveal(r,g,res,()=>{
+    updateKB(g,res);
+    const won=res.every(x=>x==='correct');
+    if(won){
+      over=true; stats.p++; stats.w++; stats.s++; saveStats();
+      document.getElementById('sc').textContent=stats.s;
+      setTimeout(()=>modal(true,r+1),200);
+    } else if(guesses.length>=MAX){
+      over=true; stats.p++; stats.s=0; saveStats();
+      setTimeout(()=>modal(false),200);
+    }
+  });
+}
+
+function shake(r){
+  document.querySelectorAll('#r'+r+' .tile').forEach(t=>{
+    t.classList.remove('shake'); void t.offsetWidth; t.classList.add('shake');
+    setTimeout(()=>t.classList.remove('shake'),350);
+  });
+}
+
+let tt;
+function toast(m){
+  const el=document.getElementById('toast');
+  el.textContent=m; el.classList.add('show');
+  clearTimeout(tt); tt=setTimeout(()=>el.classList.remove('show'),1800);
+}
+
+function modal(won,att){
+  document.getElementById('m-emoji').textContent = won?(att<=2?'🔥':att<=4?'🎉':'😅'):'😢';
+  document.getElementById('m-title').textContent = won?'برافو عليك!':'المرة الجاية!';
+  document.getElementById('m-sub').textContent   = won?`في ${att} محاولات`:'';
+  document.getElementById('m-word').textContent  = target;
+  document.getElementById('s-p').textContent = stats.p;
+  document.getElementById('s-w').textContent = stats.w;
+  document.getElementById('s-s').textContent = stats.s;
+  document.getElementById('overlay').classList.add('open');
+}
+
+document.getElementById('btn-share').addEventListener('click',()=>{
+  const mp={correct:'🟩',present:'🟨',absent:'⬛'};
+  let txt=`كلمة 🇲🇦 ${guesses.length}/${MAX}\n\n`;
+  guesses.forEach(g=>{ txt+=eval_(g).map(r=>mp[r]).join('')+'\n'; });
+  txt+='\nجرب نتا كذلك 👇\nkelma-alpha.vercel.app';
+  if(navigator.share) navigator.share({text:txt}).catch(()=>cp(txt));
+  else cp(txt);
+});
+
+function cp(t){
+  navigator.clipboard.writeText(t)
+    .then(()=>toast('تم النسخ! 📋'))
+    .catch(()=>toast('شارك من عندك!'));
+}
+
+document.getElementById('btn-next').addEventListener('click',()=>{
+  document.getElementById('overlay').classList.remove('open');
+  start();
+});
+
+// keyboard events (desktop)
+document.addEventListener('keydown',e=>{
+  if(e.key==='Backspace') press('⌫');
+  else if(e.key==='Enter') press('أدخل');
+});
+
+function start(){
+  target=WORDS[Math.floor(Math.random()*WORDS.length)];
+  guesses=[]; cur=''; over=false;
+  Object.keys(ks).forEach(k=>delete ks[k]);
+  buildGrid(); buildKB();
+}
+
+document.getElementById('sc').textContent=stats.s;
+start();
+</script>
+</body>
+</html>
